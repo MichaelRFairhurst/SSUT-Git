@@ -1,31 +1,31 @@
 #!/bin/bash
 
-########################
+##################################################################
 #
 # You can edit these :)
 #
-########################
+##################################################################
 
 HOME=/mnt/d/projects/bash/gittester
 CONFIGDIR=/config
 MAILCMD=mail
 
-########################
+##################################################################
 #
 # Declare dataset
 #
-########################
+##################################################################
 
-emails=( ) #if tests fail
-branches=( )
-branch=""
-commands=( )
+emails=( ) 	#if tests fail
+branches=( ) 	#branches to test
+branch="" 	#current branch
+commands=( ) 	#test commands
 
-########################
+##################################################################
 #
 # Parse flags
 #
-########################
+##################################################################
 
 testing=true
 checkrepo=true
@@ -60,11 +60,11 @@ do
   esac
 done
 
-########################
+##################################################################
 #
 # Pull/diff functions
 #
-########################
+##################################################################
 
 checkout_to_test ()
 {
@@ -118,21 +118,30 @@ populate_branches ()
     thisbranch=$(echo $br | cut -d / -f 2-)
     if [[ "$thisremote" = $remote && $thisbranch != "HEAD" ]]
     then
-      mybr=$(git branch | grep "$thisbranch")
-      if [ -z "$mybr" ]
+      exists=$(git branch | grep "$thisbranch")
+      if [ -z "$exists" ]
       then
-        $verbose && echo -en "\t\tCreating branch from $remote/$branch..."
-	# make an empty branch so diff will grab whole history
-        git branch --orphan $thisbranch && $verbose && echo "done"
-      fi
-      if [ -n "$since" ]
-      then
-        log=$(git log $thisbranch..$remote/$thisbranch --since=$since)
+        if [ -n "$since" ]
+        then
+          log=$(git log $remote/$thisbranch --since=$since)
+        else
+          log="true"
+        fi
       else
-        log=$(git log $thisbranch..$remote/$thisbranch)
+        if [ -n "$since" ]
+        then
+          log=$(git log $thisbranch..$remote/$thisbranch --since=$since)
+        else
+          log=$(git log $thisbranch..$remote/$thisbranch)
+        fi
       fi
       if [ -n "$log" ]
       then
+        if [ -z "$exists" ]
+        then
+          $verbose && echo -en "\t\tCreating branch from $remote/$branch..."
+          git branch $thisbranch $remote/$thisbranch && $verbose && echo "done"
+        fi
         $verbose && echo -e "\t\tAdding $thisbranch to testing queue"
 	branches[${#branches[@]}]=$thisbranch
       fi
@@ -215,7 +224,7 @@ do_email ()
   for email in ${emails[@]}
   do
     $verbose && echo -e "\t\t\t\t$email"
-    #echo $@ | eval $MAILCMD -s "'Failed tests on branch $branch'" "$email"
+    echo $@ | eval $MAILCMD -s "'Failed tests on branch $branch'" "$email"
   done
   $verbose && echo -e "\t\t\tdone"
 }
@@ -264,16 +273,16 @@ run_repo ()
         populate_emails
         run_tests
       fi
-      #update_branch
+      update_branch
     done
   fi
 }
 
-########################
+##################################################################
 #
 # When loading all configs
 #
-########################
+##################################################################
 
 if [ ${#configs[@]} -eq 0 ]
 then
@@ -285,11 +294,11 @@ then
   done
 fi
 
-########################
+##################################################################
 #
 # Git it done...
 #
-########################
+##################################################################
 
 #
 # @todo only run a single
@@ -310,11 +319,11 @@ do
   fi
 done
 
-########################
+##################################################################
 # 
 # Fork for threading
 #
-########################
+##################################################################
 
 #
 # @todo fork every config
