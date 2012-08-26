@@ -118,6 +118,7 @@ populate_branches ()
     thisbranch=$(echo $br | cut -d / -f 2-)
     if [[ "$thisremote" = $remote && $thisbranch != "HEAD" ]]
     then
+      $Verbose && echo -e "\t\t\tChecking $thisbranch log..."
       exists=$(git branch | grep "$thisbranch")
       if [ -z "$exists" ]
       then
