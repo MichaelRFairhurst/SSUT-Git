@@ -109,7 +109,7 @@ populate_emails ()
 
 populate_branches ()
 {
-  $verbose && echo -e "/tGetting updated branches"
+  $verbose && echo -e "\tGetting updated branches"
   branches=( )
   allbranches=( $(git branch -r) )
   for br in ${allbranches[@]}
