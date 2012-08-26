@@ -43,7 +43,7 @@ do
     -g) update=false;&
     -u) testing=false;;
     -c=*) configs[${#configs[@]}]=$(echo $flag | cut -b "4-");;
-    -v) echo 'Version 0.1, made by Michael Fairhurst'; exit 0;;
+    -v) echo 'SSUT-Git v0.1, made by Michael Fairhurst. Copyright 2012'; exit 0;;
     *) echo 'Help:
 	Troubleshooting with <-p|-g|-u>
 	-p will only parse config
