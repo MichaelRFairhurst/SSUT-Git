@@ -1,0 +1,324 @@
+#!/bin/bash
+
+########################
+#
+# You can edit these :)
+#
+########################
+
+HOME=/mnt/d/projects/bash/gittester
+CONFIGDIR=/config
+MAILCMD=mail
+
+########################
+#
+# Declare dataset
+#
+########################
+
+emails=( ) #if tests fail
+branches=( )
+branch=""
+commands=( )
+
+########################
+#
+# Parse flags
+#
+########################
+
+testing=true
+checkrepo=true
+update=true
+verbose=true
+configs=( )
+
+for flag in $@
+do
+  case $flag in
+    # Use fallthrough to remove dependent operations
+    -q) verbose=false;;
+    -p) checkrepo=false;&
+    -g) update=false;&
+    -u) testing=false;;
+    -c=*) configs[${#configs[@]}]=$(echo $flag | cut -b "4-");;
+    -v) echo 'Version 0.1, made by Michael Fairhurst'; exit 0;;
+    *) echo 'Help:
+	Troubleshooting with <-p|-g|-u>
+	-p will only parse config
+	-g will also check git repos
+	-u will also update git branches. This is not really for troubleshooting,
+		but is used to update all branches without testing them.
+
+	Other optional commands
+	-q will suppress success and status messages
+	-c=<config-name> run specific configs files only (can be used multiple times)
+	-v will stop execution to show version info
+
+ 	Anything else shows this help message.'
+       exit 1;;
+  esac
+done
+
+########################
+#
+# Pull/diff functions
+#
+########################
+
+checkout_to_test ()
+{
+  $verbose && echo -en "\t\tTesting $remote/$branch..."
+  git checkout $remote/$branch && $verbose && echo "done"
+}
+
+update_branch ()
+{
+  $verbose && echo -en "\t\tUpdating $branch to $remote..."
+  # avoid unnecessary checkouts
+  git -f $branch $remote/$branch && $verbose && echo "done"
+}
+
+populate_emails ()
+{
+  $verbose && echo -en "\t\tGetting emails..." 
+  emails=( )
+  allemails=$(git log $branch..$remote/$branch --pretty=format:%ae)
+  if [ $? -ne 0 ]
+  then
+    allemails=$(git log $remote/$branch --pretty=format:%ae)
+  fi
+  for current in ${allemails[@]}
+  do
+    unique=true
+    for compare in ${emails[@]}
+    do
+      if [ "$compare" = "$current" ]
+      then
+        unique=false
+      fi
+    done
+    if $unique
+    then
+      echo $current
+      emails[${#emails[@]}]=$current
+    fi
+  done
+  $verbose && echo "done"
+}
+
+populate_branches ()
+{
+  $verbose && echo -e "/tGetting updated branches"
+  branches=( )
+  allbranches=( $(git branch -r) )
+  for br in ${allbranches[@]}
+  do
+    thisremote=$(echo $br | cut -d / -f 1)
+    thisbranch=$(echo $br | cut -d / -f 2-)
+    if [[ "$thisremote" = $remote && $thisbranch != "HEAD" ]]
+    then
+      mybr=$(git branch | grep "$thisbranch")
+      if [ -z "$mybr" ]
+      then
+        $verbose && echo -en "\t\tCreating branch from $remote/$branch..."
+	# make an empty branch so diff will grab whole history
+        git branch --orphan $thisbranch && $verbose && echo "done"
+      fi
+      if [ -n "$since" ]
+      then
+        log=$(git log $thisbranch..$remote/$thisbranch --since=$since)
+      else
+        log=$(git log $thisbranch..$remote/$thisbranch)
+      fi
+      if [ -n "$log" ]
+      then
+        $verbose && echo -e "\t\tAdding $thisbranch to testing queue"
+	branches[${#branches[@]}]=$thisbranch
+      fi
+    fi
+  done
+  $verbose && echo -e "\tdone"
+}
+
+configure ()
+{
+  $verbose && echo -e "\tConfiguring..."
+  since=false
+  remote=''
+  git_dir=''
+  donedir=false
+  doneremote=false
+  donesince=false
+  for line in $@
+  do
+    commands=( )
+    if [ $(echo $line | cut -b 1) != "#" ]
+    then
+      varname=$(echo $line | cut -d = -f 1)
+      varcont=$(echo $line | cut -d = -f 2-)
+      case $varname in
+	since)  if $donesince
+	        then
+		  echo "Can only be one starting date"
+		  exit 1
+		else
+		  since=$varcont
+		  donesince=true
+		  $verbose && echo -e "\t\tTesting only commits since $since"
+		fi ;;
+	remote) if $doneremote
+                then
+                  echo "Can only be one remote"
+                  exit 1
+                else
+                  remote=$varcont
+                  doneremote=true
+		  $verbose && echo -e "\t\tUsing remote $remote"
+                fi ;;
+	gitdir) if $donedir
+                then
+                  echo "Can only be one dir"
+                  exit 1
+                else
+                  git_dir=$varcont
+                  donedir=true
+		  $verbose && echo -e "\t\tGit dir in $git_dir"
+                fi ;;
+	command) commands[${#commands[@]}]="$varcont"
+		 $verbose && echo -e "\t\tAdding command $varcont" ;;
+        *) echo "parse error: unexpected variable $name"; exit 1;;
+      esac
+    fi
+  done
+
+  $verbose && echo -en "\t\tChecking required options..."
+
+  if ! $doneremote
+  then
+    echo "No remote configured!"
+    exit 1
+  fi
+
+  if ! $donedir
+  then
+    echo "No git dir configured!"
+  fi
+
+  $verbose && echo "okay"
+  $verbose && echo -e "\tdone"
+}
+
+do_email ()
+{
+  $verbose && echo -e "\t\t\tSending result emails to:"
+  for email in ${emails[@]}
+  do
+    $verbose && echo -e "\t\t\t\t$email"
+    #echo $@ | eval $MAILCMD -s "'Failed tests on branch $branch'" "$email"
+  done
+  $verbose && echo -e "\t\t\tdone"
+}
+
+run_tests ()
+{
+  $verbose && echo -e "\t\tRunning tests:"
+  for cmd in ${commands[@]}
+  do
+    $verbose && echo -e "\t\t\tRunning $cmd"
+    result=$(eval $cmd)
+    $verbose && echo -e "\t\t\tdone"
+    if [ $? -ne 0 ]
+    then
+      $verbose && echo -e "\t\t\tFailed!"
+      do_mail $result
+    fi
+  done
+  $verbose && echo -e "\t\tdone"
+}
+
+run_repo ()
+{
+  cd $git_dir
+  if [ $? -ne 0 ]
+  then
+    echo "Could not access git dir"
+    exit 1
+  fi
+  if $checkrepo
+  then
+    $verbose && echo -e "\tUpdating refs"
+    git fetch $remote
+    if [ $? -ne 0 ]
+    then
+      echo "Could not access git repo!"
+      exit 1
+    fi
+    populate_branches
+    for branch in ${branches[@]}
+    do
+      echo $branch
+      checkout_to_test
+      if $testing
+      then
+        populate_emails
+        run_tests
+      fi
+      #update_branch
+    done
+  fi
+}
+
+########################
+#
+# When loading all configs
+#
+########################
+
+if [ ${#configs[@]} -eq 0 ]
+then
+  searchdir=$HOME$CONFIGDIR/*
+  for file in $searchdir
+  do
+    $verbose && echo "Loading config $file"
+    configs[${#configs[@]}]=$(basename $file)
+  done
+fi
+
+########################
+#
+# Git it done...
+#
+########################
+
+#
+# @todo only run a single
+#   config, otherwise
+#   fork (see below)
+#
+
+for config in ${configs[@]}
+do
+  $verbose && echo "Begin $config"
+  oldIFS=$IFS
+  IFS=$'\n'
+  configure $(cat "$HOME$CONFIGDIR/$config")
+  IFS=$oldIFS
+  if [ $? -eq 0 ]
+  then
+    run_repo
+  fi
+done
+
+########################
+# 
+# Fork for threading
+#
+########################
+
+#
+# @todo fork every config
+#   by calling itself
+#   with -c=proj if there
+#   are multiple configs
+#
