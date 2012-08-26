@@ -9,6 +9,7 @@
 HOME=/mnt/d/projects/bash/gittester
 CONFIGDIR=/config
 MAILCMD=mail
+OUTPUT=/dev/null
 
 ##################################################################
 #
@@ -69,14 +70,16 @@ done
 checkout_to_test ()
 {
   $verbose && echo -en "\t\tTesting $remote/$branch..."
-  git checkout $remote/$branch && $verbose && echo "done"
+  git checkout $remote/$branch > $OUTPUT
+  $verbose && echo "done"
 }
 
 update_branch ()
 {
   $verbose && echo -en "\t\tUpdating $branch to $remote..."
   # avoid unnecessary checkouts
-  git -f $branch $remote/$branch && $verbose && echo "done"
+  git branch -f $branch $remote/$branch > $OUTPUT
+  $verbose && echo "done"
 }
 
 populate_emails ()
@@ -141,7 +144,8 @@ populate_branches ()
         if [ -z "$exists" ]
         then
           $verbose && echo -en "\t\tCreating branch from $remote/$branch..."
-          git branch $thisbranch $remote/$thisbranch && $verbose && echo "done"
+          git branch $thisbranch $remote/$thisbranch > $OUTPUT
+	  $verbose && echo "done"
         fi
         $verbose && echo -e "\t\tAdding $thisbranch to testing queue"
 	branches[${#branches[@]}]=$thisbranch
@@ -233,17 +237,21 @@ do_email ()
 run_tests ()
 {
   $verbose && echo -e "\t\tRunning tests:"
+  oldIFS=$IFS
+  IFS=$'\n'
   for cmd in ${commands[@]}
   do
     $verbose && echo -e "\t\t\tRunning $cmd"
-    result=$(eval $cmd)
-    $verbose && echo -e "\t\t\tdone"
+    result=$(eval "$cmd")
     if [ $? -ne 0 ]
     then
       $verbose && echo -e "\t\t\tFailed!"
-      do_mail $result
+      do_email $result
+    else
+      $verbose && echo -e "\t\t\tPassed"
     fi
   done
+  IFS=$oldIFS
   $verbose && echo -e "\t\tdone"
 }
 
@@ -258,7 +266,7 @@ run_repo ()
   if $checkrepo
   then
     $verbose && echo -e "\tUpdating refs"
-    git fetch $remote
+    git fetch $remote > $OUTPUT
     if [ $? -ne 0 ]
     then
       echo "Could not access git repo!"
@@ -276,6 +284,7 @@ run_repo ()
       fi
       update_branch
     done
+    $verbose && echo -e "\tAll new branches tested"
   fi
 }
 
@@ -318,7 +327,9 @@ do
   then
     run_repo
   fi
+  $verbose && echo "Finished config $config"
 done
+$verbose && echo -e "\nComplete!"
 
 ##################################################################
 # 
