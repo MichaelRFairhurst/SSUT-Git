@@ -1,0 +1,20 @@
+########################### SSUT-Git ############################
+
+Server-Side Unit Testing for Git
+
+Perhaps pronounced 'suckit' in casual conversation, SUTT-Git is
+made to run via cron or hook+ssh to execute arbitrary test suites
+on your git repos, and email you the results upon failure.
+
+You can specify separate test commands, home directories,
+remotes, and starting dates for each project.
+
+To configure your first project, just alter and/or rename 
+config/sample. To add a project, just make a new file with proper
+syntax in the config dir.
+
+You can read the sample file for more information on project
+configuration, and you can call ssut-git help for information on
+runtime configurations.
+
+Copyright 2012 Michael Fairhurst
