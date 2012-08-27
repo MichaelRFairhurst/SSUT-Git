@@ -1,0 +1,222 @@
+#!/bin/bash
+
+#
+# All references to git go through git_do
+#
+
+checkout_to_test ()
+{
+  $verbose && echo -en "\t\tTesting $remote/$branch..."
+  git_do checkout $remote/$branch > $OUTPUT
+  $verbose && echo "done"
+}
+
+update_branch ()
+{
+  $verbose && echo -en "\t\tUpdating $branch to $remote..."
+  # avoid unnecessary checkouts
+  git_do branch -f $branch $remote/$branch > $OUTPUT
+  $verbose && echo "done"
+}
+
+populate_emails ()
+{
+  $verbose && echo -en "\t\tGetting emails..." 
+  emails=( )
+  allemails=$(git_do log $branch..$remote/$branch --pretty=format:%ae)
+  for current in ${allemails[@]}
+  do
+    unique=true
+    for compare in ${emails[@]}
+    do
+      if [ "$compare" = "$current" ]
+      then
+        unique=false
+      fi
+    done
+    if $unique
+    then
+      $verbose && echo $current
+      emails[${#emails[@]}]=$current
+    fi
+  done
+  $verbose && echo "done"
+}
+
+populate_branches ()
+{
+  $verbose && echo -e "\tGetting updated branches"
+  branches=( )
+  allbranches=( $(git_do branch -r) )
+  for br in ${allbranches[@]}
+  do
+    thisremote=$(echo $br | cut -d / -f 1)
+    thisbranch=$(echo $br | cut -d / -f 2-)
+    if [[ "$thisremote" = $remote && $thisbranch != "HEAD" ]]
+    then
+      $verbose && echo -e "\t\t\tChecking $thisbranch log..."
+      exists=$(git_do branch | grep "$thisbranch$")
+      if [ -z "$exists" ]
+      then
+        if [ -n "$since" ]
+        then
+          log=$(git_do log $remote/$thisbranch --since=$since)
+        else
+          log="true"
+        fi
+      else
+        if [ -n "$since" ]
+        then
+          log=$(git_do log $thisbranch..$remote/$thisbranch --since=$since)
+        else
+          log=$(git_do log $thisbranch..$remote/$thisbranch)
+        fi
+      fi
+      if [ -n "$log" ]
+      then
+        if [ -z "$exists" ]
+        then
+          $verbose && echo -en "\t\tCreating branch from $remote/$branch..."
+          git_do branch $thisbranch $remote/$thisbranch > $OUTPUT
+	  $verbose && echo "done"
+        fi
+        $verbose && echo -e "\t\tAdding $thisbranch to testing queue"
+	branches[${#branches[@]}]=$thisbranch
+      fi
+    fi
+  done
+  $verbose && echo -e "\tdone"
+}
+
+configure ()
+{
+  $verbose && echo -e "\tConfiguring..."
+  since=false
+  remote=''
+  git_dir=''
+  donedir=false
+  doneremote=false
+  donesince=false
+  for line in $@
+  do
+    commands=( )
+    if [ $(echo $line | cut -b 1) != "#" ]
+    then
+      varname=$(echo $line | cut -d = -f 1)
+      varcont=$(echo $line | cut -d = -f 2-)
+      case $varname in
+	since)  if $donesince
+	        then
+		  echo "Can only be one starting date"
+		  exit 1
+		else
+		  since=$varcont
+		  donesince=true
+		  $verbose && echo -e "\t\tTesting only commits since $since"
+		fi ;;
+	remote) if $doneremote
+                then
+                  echo "Can only be one remote"
+                  exit 1
+                else
+                  remote=$varcont
+                  doneremote=true
+		  $verbose && echo -e "\t\tUsing remote $remote"
+                fi ;;
+	gitdir) if $donedir
+                then
+                  echo "Can only be one dir"
+                  exit 1
+                else
+                  git_dir=$varcont
+                  donedir=true
+		  $verbose && echo -e "\t\tGit dir in $git_dir"
+                fi ;;
+	command) commands[${#commands[@]}]="$varcont"
+		 $verbose && echo -e "\t\tAdding command $varcont" ;;
+        *) echo "parse error: unexpected variable $varname"; exit 1;;
+      esac
+    fi
+  done
+
+  $verbose && echo -en "\t\tChecking required options..."
+
+  if ! $doneremote
+  then
+    echo "No remote configured!"
+    exit 1
+  fi
+
+  if ! $donedir
+  then
+    echo "No git dir configured!"
+  fi
+
+  $verbose && echo "okay"
+  $verbose && echo -e "\tdone"
+}
+
+do_email ()
+{
+  $verbose && echo -e "\t\t\tSending result emails to:"
+  for email in ${emails[@]}
+  do
+    $verbose && echo -e "\t\t\t\t$email"
+    echo $@ | eval $MAILCMD -s "'Failed tests on branch $branch'" "$email"
+  done
+  $verbose && echo -e "\t\t\tdone"
+}
+
+run_tests ()
+{
+  $verbose && echo -e "\t\tRunning tests:"
+  oldIFS=$IFS
+  IFS=$'\n'
+  for cmd in ${commands[@]}
+  do
+    $verbose && echo -e "\t\t\tRunning $cmd"
+    result=$(eval "$cmd")
+    if [ $? -ne 0 ]
+    then
+      $verbose && echo -e "\t\t\tFailed!"
+      do_email $result
+    else
+      $verbose && echo -e "\t\t\tPassed"
+    fi
+  done
+  IFS=$oldIFS
+  $verbose && echo -e "\t\tdone"
+}
+
+run_repo ()
+{
+  cd $git_dir
+  if [ $? -ne 0 ]
+  then
+    echo "Could not access git dir"
+    exit 1
+  fi
+  if $checkrepo
+  then
+    $verbose && echo -e "\tUpdating refs"
+    git_do fetch $remote > $OUTPUT
+    if [ $? -ne 0 ]
+    then
+      echo "Could not access git repo!"
+      exit 1
+    fi
+    populate_branches
+    for branch in ${branches[@]}
+    do
+      echo $branch
+      checkout_to_test
+      if $testing
+      then
+        populate_emails
+        run_tests
+      fi
+      update_branch
+    done
+    $verbose && echo -e "\tAll new branches tested"
+  fi
+}

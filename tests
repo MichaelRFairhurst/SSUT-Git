@@ -1,0 +1,757 @@
+#!/bin/bash
+. lib
+
+TMP=/tmp/ssutgittest
+TMP2=/tmp/ssutgittest2
+OUTPUT=/dev/null # used in lib
+
+testCheckoutToTestCallsDoGitWithCheckoutWhenVerbose ()
+{
+   verbose=true
+   remote="test"
+   branch="br"
+   checkout_to_test > $TMP2
+   assertGitDid checkout test/br
+   assertNotNull "$(cat $TMP2)"
+}
+
+testCheckoutToTestCallsDoGitWithCheckoutWhenQuiet ()
+{
+   verbose=false
+   remote="test"
+   branch="br"
+   checkout_to_test > $TMP2
+   assertGitDid checkout test/br
+   assertNull "$(cat $TMP2)"
+}
+
+testUpdateBranchCallsDoGitWithRefUpdateWhenQuiet ()
+{
+  verbose=false
+  remote="test"
+  branch="br"
+  update_branch > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDid branch -f br test/br
+}
+
+testUpdateBranchCallsDoGitWithRefUpdateWhenVerbose ()
+{
+  verbose=true
+  remote="test"
+  branch="br"
+  update_branch > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDid branch -f br test/br
+}
+
+testPopulateEmailsWithTwoEmailsRemembersTwoWhenQuiet ()
+{
+  verbose=false
+  git_do ()
+  {
+    echo -e "email1\nemail2"
+  }
+  populate_emails > $TMP
+  assertNull "$(cat $TMP)"
+
+  assertEquals "${emails[0]}" email1
+  assertEquals "${emails[1]}" email2
+  assertEquals "${#emails[@]}" 2
+}
+
+testPopulateEmailsWithTwoEmailsRemembersTwoWhenVerbose ()
+{
+  verbose=true
+  git_do ()
+  {
+    echo -e "email1\nemail2"
+  }
+
+  populate_emails > $TMP
+  assertNotNull "$(cat $TMP)"
+
+  assertEquals "${emails[0]}" email1
+  assertEquals "${emails[1]}" email2
+  assertEquals "${#emails[@]}" 2
+}
+
+testPopulateEmailsWithOneEmailIsAnArrayWhenQuiet ()
+{
+  verbose=false
+  git_do ()
+  {
+    echo email1
+  }
+  
+  populate_emails > $TMP
+  assertNull "$(cat $TMP)"
+
+  assertEquals "${emails[0]}" email1
+  assertEquals "${#emails[@]}" 1
+}
+
+testPopulateEmailsWithOneEmailIsAnArrayWhenVerbose ()
+{
+  verbose=true
+  git_do ()
+  {
+    echo email1
+  }
+  
+  populate_emails > $TMP
+  assertNotNull "$(cat $TMP)"
+
+  assertEquals "${emails[0]}" email1
+  assertEquals "${#emails[@]}" 1
+}
+
+testPopulateEmailsWithDuplicatesStoresOriginalsWhenQuiet ()
+{
+  verbose=false
+  git_do ()
+  {
+    echo -e 'email1\nemail2\nemail1\nemail2'
+  }
+
+  populate_emails > $TMP
+  assertNull "$(cat $TMP)"
+  assertEquals "${emails[0]}" email1
+  assertEquals "${emails[1]}" email2
+  assertEquals "${#emails[@]}" 2
+}
+
+testPopulateEmailsWithDuplicatesStoresOriginalsWhenVerbose ()
+{
+  verbose=true
+  git_do ()
+  {
+    echo -e 'email1\nemail2\nemail1\nemail2'
+  }
+
+  populate_emails > $TMP
+  assertNotNull "$(cat $TMP)"
+  assertEquals "${emails[0]}" email1
+  assertEquals "${emails[1]}" email2
+  assertEquals "${#emails[@]}" 2
+}
+
+testPopulateEmailsCallsPrettyLogWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  branch=test
+  populate_emails > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDid log test..origin/test --pretty=format:%ae
+}
+
+testPopulateEmailsCallsPrettyLogWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  branch=test
+  populate_emails > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDid log test..origin/test --pretty=format:%ae
+}
+
+testPopulateBranchesWillNotPopulateHEADWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  git_do ()
+  {
+    echo "origin/HEAD"
+  }
+  
+  populate_branches > $TMP
+  assertNull "$(cat $TMP)"
+  assertEquals ${#branches[@]} 0
+}
+
+testPopulateBranchesWillNotPopulateHEADWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  git_do ()
+  {
+    echo "origin/HEAD"
+  }
+  
+  populate_branches > $TMP
+  assertNotNull "$(cat $TMP)"
+  assertEquals ${#branches[@]} 0
+}
+
+testPopulateBranchesWillNotPopulateWrongRemoteWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  git_do ()
+  {
+    echo "not_origin/test"
+  }
+  
+  populate_branches > $TMP
+  assertNull "$(cat $TMP)"
+  assertEquals ${#branches[@]} 0
+}
+
+testPopulateBranchesWillNotPopulateWroncRemoteWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  git_do ()
+  {
+    echo "not_origin/test"
+  }
+  
+  populate_branches > $TMP
+  assertNotNull "$(cat $TMP)"
+  assertEquals ${#branches[@]} 0
+}
+
+testPopulateBranchesWillMakeBranchWithRecentHistoryIfNotExistsWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  since=2012-08-08
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch_) echo "Grep will get no results" ;;
+      log_origin/testbranch) echo "absolutely anything";;
+      *) log $@ ;;
+    esac
+  }
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDid branch testbranch origin/testbranch
+  assertEquals ${#branches[@]} 1 
+  assertEquals ${branches[0]} testbranch
+}
+
+testPopulateBranchesWillMakeBranchWithRecentHistoryIfNotExistsWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  since=2012-08-08
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch_) echo "Grep will get no results" ;;
+      log_origin/testbranch) echo "absolutely anything";;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDid branch testbranch origin/testbranch
+  assertEquals ${#branches[@]} 1
+  assertEquals ${branches[0]} testbranch
+}
+
+testPopulateBranchesWillNotMakeBranchWithoutRecentHistoryIfNotExistsWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  since=2012-08-08
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch_) echo "Grep will get no results" ;;
+      log_origin/testbranch) echo ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 0
+  assertNull "${branches[0]}"
+}
+
+testPopulateBranchesWillNotMakeBranchWithoutRecentHistoryIfNotExistsWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  since=2012-08-08
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch_) echo "Grep will get no results" ;;
+      log_origin/testbranch) echo ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 0
+  assertNull "${branches[0]}"
+}
+
+testPopulateBranchesWillMakeBranchWithoutASinceIfNotExistsWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  since=
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch_) echo "Grep will get no results" ;;
+      *) log $@ ;;
+    esac
+  }
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDid branch testbranch origin/testbranch
+  assertEquals ${#branches[@]} 1 
+  assertEquals ${branches[0]} testbranch
+}
+
+testPopulateBranchesWillMakeBranchWithoutASinceIfNotExistsWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  since=
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch_) echo "Grep will get no results" ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDid branch testbranch origin/testbranch
+  assertEquals ${#branches[@]} 1
+  assertEquals ${branches[0]} testbranch
+}
+
+testPopulateBranchesWillQueueBranchesWithChangesWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  git_do ()
+  {
+    case $1 in
+      branch) echo -e "origin/testbranch\norigin/anotherone" ;;
+      log) echo "absolutely anything" ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 2
+  assertEquals ${branches[0]} testbranch
+  assertEquals ${branches[1]} anotherone
+}
+
+testPopulateBranchesWillQueueBranchesWithChangesWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  git_do ()
+  {
+    case $1 in
+      branch) echo -e "origin/testbranch\norigin/anotherone" ;;
+      log) echo "absolutely anything" ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 2
+  assertEquals ${branches[0]} testbranch
+  assertEquals ${branches[1]} anotherone
+}
+
+testPopulateBranchesWillNotQueueBranchesWithoutChangesWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  git_do ()
+  {
+    case $1 in
+      branch) echo -e "origin/testbranch\norigin/anotherone" ;;
+      log) echo ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 0
+  assertNull "${branches[0]}"
+}
+
+testPopulateBranchesWillQueueBranchesWithChangesWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  git_do ()
+  {
+    case $1 in
+      branch) echo -e "origin/testbranch\norigin/anotherone" ;;
+      log) echo ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 0
+  assertNull "${branches[0]}"
+}
+
+testPopulateBranchesWillQueueAnyBranchesWithChangesWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  git_do ()
+  {
+    case $1_$2 in
+      branch*) echo -e "origin/testbranch\norigin/anotherone" ;;
+      log_testbranch*) echo "absolutely anything";;
+      log_anotherone*) echo ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 1
+  assertEquals ${branches[0]} testbranch
+  assertNull "${branches[1]}"
+}
+
+testPopulateBranchesWillQueueAnyBranchesWithChangesWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  git_do ()
+  {
+    case $1_$2 in
+      branch*) echo -e "origin/testbranch\norigin/anotherone" ;;
+      log_testbranch*) echo "absolutely anything";;
+      log_anotherone*) echo ;;
+      *) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDidNothing
+  assertEquals ${#branches[@]} 1
+  assertEquals ${branches[0]} testbranch
+  assertNull "${branches[1]}"
+}
+
+testPopulateBranchesCallsSinceWhenSinceIsSetOnExistingBranchesWhenQuiet ()
+{
+  verbose=false
+  since=test_since
+  remote=origin
+  
+  git_do ()
+  {
+    case $1 in
+      branch) echo "origin/testbranch" ;;
+      log) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDid log testbranch..origin/testbranch --since=test_since
+}
+
+testPopulateBranchesCallsSinceWhenSinceIsSetOnExistingBranchesWhenVerbose ()
+{
+  verbose=true
+  since=test_since
+  remote=origin
+  
+  git_do ()
+  {
+    case $1 in
+      branch) echo "origin/testbranch" ;;
+      log) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDid log testbranch..origin/testbranch --since=test_since
+}
+
+testPopulateBranchesCallsSinceWhenSinceIsSetOnNewBranchesWhenQuiet ()
+{
+  verbose=false
+  since=test_since
+  remote=origin
+  
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      log*) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDid log origin/testbranch --since=test_since
+}
+
+testPopulateBranchesCallsSinceWhenSinceIsSetOnNewBranchesWhenVerbose ()
+{
+  verbose=true
+  since=test_since
+  remote=origin
+  
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      log*) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDid log origin/testbranch --since=test_since
+}
+
+testPopulateBranchesDoesNotCallSinceWhenSinceIsNotSetOnExistingBranchesWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  since=
+  
+  git_do ()
+  {
+    case $1 in
+      branch) echo "origin/testbranch" ;;
+      log) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDid log testbranch..origin/testbranch
+}
+
+testPopulateBranchesDoesNotCallSinceWhenSinceIsNotSetOnExistingBranchesWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  since=
+  
+  git_do ()
+  {
+    case $1 in
+      branch) echo "origin/testbranch" ;;
+      log) log $@ ;;
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDid log testbranch..origin/testbranch
+}
+
+testPopulateBranchesDoesNotCallLogOnNewBranchesWithoutSinceWhenQuiet ()
+{
+  verbose=false
+  remote=origin
+  since=
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch*) echo ;;
+      log*) log $@; 
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNull "$(cat $TMP2)"
+  assertGitDidNothing
+}
+
+testPopulateBranchesDoesNotCallLogOnNewBranchesWithoutSinceWhenVerbose ()
+{
+  verbose=true
+  remote=origin
+  since=
+  git_do ()
+  {
+    case $1_$2 in
+      branch_-r) echo "origin/testbranch" ;;
+      branch*) echo ;;
+      log*) log $@; 
+    esac
+  }
+
+  populate_branches > $TMP2
+  assertNotNull "$(cat $TMP2)"
+  assertGitDidNothing
+}
+
+testConfigureOnlyRequiresDirAndRemote ()
+{
+  verbose=false
+  config=( "gitdir=test3" "remote=test4" )
+  configure ${config[@]} > $TMP
+  assertEquals "$git_dir" "test3"
+  assertEquals "$remote" "test4"
+  assertNull "$(cat $TMP)"
+}
+
+testConfigureIgnoresComments ()
+{
+  verbose=false
+  config=( "#comment" "gitdir=test1" "remote=test2" "#anothercomment" )
+  configure ${config[@]} > $TMP
+  assertEquals "$git_dir" "test1"
+  assertEquals "$remote" "test2"
+  assertNull "$(cat $TMP)"
+}
+
+testConfigureHasErrorFromTwoDirs ()
+{
+  verbose=false
+  config=( "gitdir=test" "gitdir=test" )
+  $(configure ${config[@]} > $TMP)
+  assertEquals $? 1
+  assertEquals "$(cat $TMP)" "Can only be one dir"
+}
+
+testConfigureHasErrorFromTwoRemotes ()
+{
+  verbose=false
+  config=( "remote=test" "remote=test" )
+  $(configure ${config[@]} > $TMP)
+  assertEquals $? 1
+  assertEquals "$(cat $TMP)" "Can only be one remote"
+}
+
+testConfigureHasErrorFromTwoSinces ()
+{
+  verbose=false
+  config=( "since=test" "since=test" )
+  $(configure ${config[@]} > $TMP)
+  assertEquals $? 1
+  assertEquals "$(cat $TMP)" "Can only be one starting date"
+}
+
+testConfigureHasErrorFromUnknowVariables ()
+{
+  verbose=false
+  config=( "testvar=test" )
+  $(configure ${config[@]} > $TMP)
+  assertEquals $? 1
+  assertEquals "$(cat $TMP)" "parse error: unexpected variable testvar"
+}
+
+testConfigureSinceSetsSince ()
+{
+  verbose=false
+  config=( "git_dir=unused" "remote=unused" "since=testme" )
+  configure ${config[@]} > $TMP
+  assertNull "$(cat $TMP)"
+  assertEquals "$since" "testme"
+}
+
+testConfigureCommandSetsCommand ()
+{
+  verbose=false
+  config=( "git_dir=unused" "remote=unused" "command=testme" )
+  configure ${config[@]} > $TMP
+  assertNull "$(cat $TMP)"
+  assertEquals "${#command[@]}" 1
+  assertEquals "${command[0]}" "testme"
+}
+
+testConfigureCommandsSetsCommands ()
+{
+  verbose=false
+  config=( "git_dir=unused" "remote=unused" "command=testme1" "command=testme2" )
+  configure ${config[@]} > $TMP
+  assertNull "$(cat $TMP)"
+  assertEquals "${#command[@]}" 2
+  assertEquals "${command[0]}" "testme1"
+  assertEquals "${command[1]}" "testme2"
+}
+
+###         ###
+#             #
+# Suite funcs #
+#             #
+###         ###
+
+log ()
+{
+  echo $@ >> $TMP
+}
+
+assertGitDidNothing ()
+{
+  assertFalse " [ -e $TMP ] "
+}
+
+assertGitDid ()
+{
+  assertTrue " [ -e $TMP ] "
+  words=( $(cat $TMP) )
+  for word in ${words[@]}
+  do
+    assertNotNull "$1"
+    assertEquals "$1" "$word"
+    shift
+  done
+  assertNull "'"$@"'"
+}
+
+setUp ()
+{
+  git_do ()
+  {
+    log $@
+  }
+}
+
+tearDown ()
+{
+  if [ -e $TMP ]
+  then
+    rm $TMP
+  fi
+  if [ -e $TMP2 ]
+  then
+    rm $TMP2
+  fi
+}
+
+# And off we go!
+. shunit2
