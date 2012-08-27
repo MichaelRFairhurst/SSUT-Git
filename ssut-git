@@ -6,7 +6,7 @@
 #
 ##################################################################
 
-HOME=/mnt/d/projects/bash/gittester
+HOME=~/services/SSUT-Git/SSUT-Git
 CONFIGDIR=/config
 MAILCMD=mail
 OUTPUT=/dev/null
@@ -74,7 +74,7 @@ git_do ()
   return $?
 }
 
-. lib
+. $HOME/lib
 
 ##################################################################
 #
