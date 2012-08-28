@@ -12,7 +12,7 @@ testCheckoutToTestCallsDoGitWithCheckoutWhenVerbose ()
    branch="br"
    checkout_to_test > $TMP2
    assertGitDid checkout test/br
-   assertNotNull "$(cat $TMP2)"
+   assertNotNull "No output when verbose" "$(cat $TMP2)"
 }
 
 testCheckoutToTestCallsDoGitWithCheckoutWhenQuiet ()
@@ -43,6 +43,24 @@ testUpdateBranchCallsDoGitWithRefUpdateWhenVerbose ()
   update_branch > $TMP2
   assertNotNull "$(cat $TMP2)"
   assertGitDid branch -f br test/br
+}
+
+testPopulateEmailsWithNoHistoryAssumesBranchIsNewAndGetsFullHistory()
+{
+  remote=origin
+  branch=test
+  git_do ()
+  {
+    case $1_$2 in
+      log_test.*) echo ;;
+      *) log $@
+         echo "testemail"
+    esac
+  }
+  populate_emails > $TMP2
+  assertEquals "${emails[0]}" testemail
+  assertEquals "${#emails[@]}" 1
+  assertGitDid log test --pretty=format:%ae
 }
 
 testPopulateEmailsWithTwoEmailsRemembersTwoWhenQuiet ()
@@ -679,7 +697,7 @@ testConfigureSinceSetsSince ()
   verbose=false
   config=( "gitdir=unused" "remote=unused" "since=testme" )
   configure ${config[@]} > $TMP
-  assertNull "$(cat $TMP)"
+  assertNull "Echoed an error?" "$(cat $TMP)"
   assertEquals "$since" "testme"
 }
 
@@ -688,7 +706,7 @@ testConfigureCommandSetsCommand ()
   verbose=false
   config=( "gitdir=unused" "remote=unused" "command=testme" )
   configure ${config[@]} > $TMP
-  assertNull "$(cat $TMP)"
+  assertNull "Echoed an error?" "$(cat $TMP)"
   assertEquals "${#command[@]}" 1
   assertEquals "${command[0]}" "testme"
 }
@@ -698,7 +716,7 @@ testConfigureCommandsSetsCommands ()
   verbose=false
   config=( "gitdir=unused" "remote=unused" "command=testme1" "command=testme2" )
   configure ${config[@]} > $TMP
-  assertNull "$(cat $TMP)"
+  assertNull "Echoed an error?" "$(cat $TMP)"
   assertEquals "${#command[@]}" 2
   assertEquals "${command[0]}" "testme1"
   assertEquals "${command[1]}" "testme2"
@@ -717,20 +735,20 @@ log ()
 
 assertGitDidNothing ()
 {
-  assertFalse " [ -e $TMP ] "
+  assertFalse "Git did something" " [ -e $TMP ] "
 }
 
 assertGitDid ()
 {
-  assertTrue " [ -e $TMP ] "
+  assertTrue "Git log doesnt exist" " [ -e $TMP ] "
   words=( $(cat $TMP) )
   for word in ${words[@]}
   do
-    assertNotNull "$1"
-    assertEquals "$1" "$word"
+    assertNotNull "Git command should be null but is $word" "$1"
+    assertEquals "Mismatched git params" "$1" "$word"
     shift
   done
-  assertNull "'"$@"'"
+  assertNull "Git command should be $@ but is null" "'"$@"'"
 }
 
 setUp ()

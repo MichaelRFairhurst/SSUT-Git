@@ -24,6 +24,10 @@ populate_emails ()
   $verbose && echo -en "\t\tGetting emails..." 
   emails=( )
   allemails=$(git_do log $branch..$remote/$branch --pretty=format:%ae)
+  if [ -z "$allemails" ]
+  then
+    allemails=$(git_do log $branch --pretty=format:%ae)
+  fi
   for current in ${allemails[@]}
   do
     unique=true
