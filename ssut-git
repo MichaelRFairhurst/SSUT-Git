@@ -6,7 +6,7 @@
 #
 ##################################################################
 
-HOME=$(dirname $0)
+HOME=$(dirname $(realpath $0))
 CONFIGDIR=/config
 MAILCMD=mail
 OUTPUT=/dev/null
