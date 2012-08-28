@@ -156,6 +156,11 @@ testPopulateEmailsWithDuplicatesStoresOriginalsWhenVerbose ()
 
 testPopulateEmailsCallsPrettyLogWhenQuiet ()
 {
+  git_do ()
+  {
+    echo "absolutely anything"
+    log $@
+  }
   verbose=false
   remote=origin
   branch=test
@@ -166,6 +171,11 @@ testPopulateEmailsCallsPrettyLogWhenQuiet ()
 
 testPopulateEmailsCallsPrettyLogWhenVerbose ()
 {
+  git_do ()
+  {
+    echo "absolutely anything"
+    log $@
+  }
   verbose=true
   remote=origin
   branch=test
