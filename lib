@@ -91,15 +91,15 @@ populate_branches ()
 configure ()
 {
   $verbose && echo -e "\tConfiguring..."
-  since=false
+  since=''
   remote=''
   git_dir=''
   donedir=false
   doneremote=false
   donesince=false
+  commands=( )
   for line in $@
   do
-    commands=( )
     if [ $(echo $line | cut -b 1) != "#" ]
     then
       varname=$(echo $line | cut -d = -f 1)

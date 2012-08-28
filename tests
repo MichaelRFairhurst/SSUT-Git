@@ -677,7 +677,7 @@ testConfigureHasErrorFromUnknowVariables ()
 testConfigureSinceSetsSince ()
 {
   verbose=false
-  config=( "git_dir=unused" "remote=unused" "since=testme" )
+  config=( "gitdir=unused" "remote=unused" "since=testme" )
   configure ${config[@]} > $TMP
   assertNull "$(cat $TMP)"
   assertEquals "$since" "testme"
@@ -686,7 +686,7 @@ testConfigureSinceSetsSince ()
 testConfigureCommandSetsCommand ()
 {
   verbose=false
-  config=( "git_dir=unused" "remote=unused" "command=testme" )
+  config=( "gitdir=unused" "remote=unused" "command=testme" )
   configure ${config[@]} > $TMP
   assertNull "$(cat $TMP)"
   assertEquals "${#command[@]}" 1
@@ -696,7 +696,7 @@ testConfigureCommandSetsCommand ()
 testConfigureCommandsSetsCommands ()
 {
   verbose=false
-  config=( "git_dir=unused" "remote=unused" "command=testme1" "command=testme2" )
+  config=( "gitdir=unused" "remote=unused" "command=testme1" "command=testme2" )
   configure ${config[@]} > $TMP
   assertNull "$(cat $TMP)"
   assertEquals "${#command[@]}" 2
