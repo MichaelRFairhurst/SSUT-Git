@@ -84,7 +84,7 @@ git_do ()
 
 if [ ${#configs[@]} -eq 0 ]
 then
-  searchdir=$HOME$CONFIGDIR/*
+  searchdir=$CONFIGDIR/*
   for file in $searchdir
   do
     $verbose && echo "Loading config $file"
@@ -109,7 +109,7 @@ do
   $verbose && echo "Begin $config"
   oldIFS=$IFS
   IFS=$'\n'
-  configure $(cat "$HOME$CONFIGDIR/$config")
+  configure $(cat "$CONFIGDIR/$config")
   IFS=$oldIFS
   if [ $? -eq 0 ]
   then
