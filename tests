@@ -1,7 +1,6 @@
 #!/bin/bash
 . lib
 
-
 TMP=/tmp/ssutgittest
 TMP2=/tmp/ssutgittest2
 OUTPUT=/dev/null # used in lib
