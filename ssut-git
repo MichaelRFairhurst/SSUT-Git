@@ -6,7 +6,7 @@
 #
 ##################################################################
 
-HOME=~/services/SSUT-Git/SSUT-Git
+HOME=$(dirname $0)
 CONFIGDIR=/config
 MAILCMD=mail
 OUTPUT=/dev/null
