@@ -10,7 +10,7 @@ HOME=$(dirname $(readlink -f $0))
 CONFIGDIR=$HOME/config
 MAILCMD=mail
 OUTPUT=/dev/null
-RESULTTMP=/tmp/ssut-git_results$(time)
+RESULTTMP=/tmp/ssut-git_results$(date +%s)
 
 ##################################################################
 #
