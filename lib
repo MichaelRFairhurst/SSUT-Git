@@ -213,7 +213,6 @@ run_repo ()
     populate_branches
     for branch in ${branches[@]}
     do
-      echo $branch
       checkout_to_test
       if $testing
       then
