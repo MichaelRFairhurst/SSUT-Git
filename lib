@@ -7,7 +7,7 @@
 checkout_to_test ()
 {
   $verbose && echo -en "\t\tTesting $remote/$branch..."
-  git_do checkout $remote/$branch > $OUTPUT
+  git_do checkout $remote/$branch &> $OUTPUT
   $verbose && echo "done"
 }
 
@@ -15,7 +15,7 @@ update_branch ()
 {
   $verbose && echo -en "\t\tUpdating $branch to $remote..."
   # avoid unnecessary checkouts
-  git_do branch -f $branch $remote/$branch > $OUTPUT
+  git_do branch -f $branch $remote/$branch &> $OUTPUT
   $verbose && echo "done"
 }
 
@@ -81,7 +81,7 @@ populate_branches ()
         if [ -z "$exists" ]
         then
           $verbose && echo -en "\t\tCreating branch from $remote/$branch..."
-          git_do branch $thisbranch $remote/$thisbranch > $OUTPUT
+          git_do branch $thisbranch $remote/$thisbranch &> $OUTPUT
 	  $verbose && echo "done"
         fi
         $verbose && echo -e "\t\tAdding $thisbranch to testing queue"
@@ -166,7 +166,7 @@ do_email ()
   for email in ${emails[@]}
   do
     $verbose && echo -e "\t\t\t\t$email"
-    echo $@ | eval $MAILCMD -s "'Failed tests on branch $branch'" "$email"
+    cat $RESULTTMP | eval $MAILCMD -s "'Failed tests on branch $branch'" "$email"
   done
   $verbose && echo -e "\t\t\tdone"
 }
@@ -179,15 +179,16 @@ run_tests ()
   for cmd in ${commands[@]}
   do
     $verbose && echo -e "\t\t\tRunning $cmd"
-    result=$(eval "$cmd")
+    eval "$cmd" 1&2> $RESULTTMP
     if [ $? -ne 0 ]
     then
       $verbose && echo -e "\t\t\tFailed!"
-      do_email $result
+      do_email
     else
       $verbose && echo -e "\t\t\tPassed"
     fi
   done
+  rm $RESULTTMP
   IFS=$oldIFS
   $verbose && echo -e "\t\tdone"
 }
@@ -203,7 +204,7 @@ run_repo ()
   if $checkrepo
   then
     $verbose && echo -e "\tUpdating refs"
-    git_do fetch $remote > $OUTPUT
+    git_do fetch $remote &> $OUTPUT
     if [ $? -ne 0 ]
     then
       echo "Could not access git repo!"

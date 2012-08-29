@@ -5,6 +5,7 @@
 TMP=/tmp/ssutgittest
 TMP2=/tmp/ssutgittest2
 OUTPUT=/dev/null # used in lib
+RESULTTMP=/tmp/garbage # used in lib, gets rm'd
 
 testCheckoutToTestCallsDoGitWithCheckoutWhenVerbose ()
 {
