@@ -179,7 +179,7 @@ run_tests ()
   for cmd in ${commands[@]}
   do
     $verbose && echo -e "\t\t\tRunning $cmd"
-    eval "$cmd" 1&2> $RESULTTMP
+    eval "$cmd" &> $RESULTTMP
     if [ $? -ne 0 ]
     then
       $verbose && echo -e "\t\t\tFailed!"
