@@ -729,7 +729,7 @@ testConfigureCommandsSetsCommands ()
   config=( "gitdir=unused" "remote=unused" "command=testme1" "command=testme2" )
   configure ${config[@]} > $TMP
   assertNull "Echoed an error?" "$(cat $TMP)"
-  assertEquals "${#commands[@]}" 5 #2
+  assertEquals "${#commands[@]}" 2
   assertEquals "${commands[0]}" "testme1"
   assertEquals "${commands[1]}" "testme2"
 }
