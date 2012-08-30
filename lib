@@ -21,7 +21,7 @@ update_branch ()
 
 populate_emails ()
 {
-  $verbose && echo -en "\t\tGetting emails..." 
+  $verbose && echo -e "\t\tGetting emails..." 
   emails=( )
   allemails=( $(git_do log $branch..$remote/$branch --pretty=format:%ae) )
   if [ -z "$allemails" ]
@@ -40,11 +40,11 @@ populate_emails ()
     done
     if $unique
     then
-      $verbose && echo $current
+      $verbose && echo -e "\t\t\t$current"
       emails[${#emails[@]}]=$current
     fi
   done
-  $verbose && echo "done"
+  $verbose && echo -e "\t\tdone"
 }
 
 populate_branches ()
