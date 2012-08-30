@@ -661,6 +661,15 @@ testPopulateBranchesDoesNotCallLogOnNewBranchesWithoutSinceWhenVerbose ()
   assertGitDidNothing
 }
 
+testConfigureWillNotSkipWhenLastConfigureWasSkipped ()
+{
+  verbose=false
+  skip=true
+  config=( "gitdir=a" "remote=a" )
+  configure ${config[@]} > $TMP
+  assertFalse "Configuration was skipped without a skip option present" $skip
+}
+
 testConfigureOnlyRequiresDirAndRemote ()
 {
   verbose=false
@@ -671,10 +680,10 @@ testConfigureOnlyRequiresDirAndRemote ()
   assertNull "$(cat $TMP)"
 }
 
-testConfigureIgnoresComments ()
+testConfigureIgnoresCommentsAndEmptyLines ()
 {
   verbose=false
-  config=( "#comment" "gitdir=test1" "remote=test2" "#anothercomment" )
+  config=( "#comment" "" "gitdir=test1" "remote=test2" "#anothercomment" )
   configure ${config[@]} > $TMP
   assertEquals "$git_dir" "test1"
   assertEquals "$remote" "test2"
@@ -745,6 +754,15 @@ testConfigureCommandsSetsCommands ()
   assertEquals "${#commands[@]}" 2
   assertEquals "${commands[0]}" "testme1"
   assertEquals "${commands[1]}" "testme2"
+}
+
+testConfigureSkipWillSkipWithoutCheckingRequirements ()
+{
+  verbose=false
+  skip=false
+  config=( "skip" )
+  configure ${config[@]} > $TMP
+  assertTrue "Failed to skip configuration" $skip
 }
 
 testRunRepoWithNoFetchReturns ()

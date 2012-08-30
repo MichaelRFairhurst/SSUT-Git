@@ -1,20 +1,20 @@
-# Sample configuration
+# -- Sample configuration
 #
 # You can put comments in like this
-# But @fixme empty lines will cause errors
-#
+
 # No spaces around '='
 gitdir=/tmp
 remote=origin
-#
+
 # Usually on old projects you'll want to specify
 # an oldest date, format YYYY-MM-DD
 since=2012-08-25
-#
+
 # You can have multiple commands per project
-# 
+# Each command will have its own email of output on failure
 command=echo successfully would have run tests!
 command=echo you can execute as many commands as you want!
-# 
-# Each command will have its own email of output on failure
-#
+
+
+# Finally, you can skip files with
+skip

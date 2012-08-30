@@ -111,12 +111,20 @@ do
   oldIFS=$IFS
   IFS=$'\n'
   configure $(cat "$CONFIGDIR/$config")
+  configured=$?
   IFS=$oldIFS
-  if [ $? -eq 0 ]
+  if [ $configured -eq 0 ]
   then
-    run_repo
+    if $skip
+    then
+      echo "Skipping $config..."
+    else
+      run_repo
+      $verbose && echo "Finished config $config"
+    fi
+  else
+    echo "Configuration failed!"
   fi
-  $verbose && echo "Finished config $config"
 done
 $verbose && echo -e "\nComplete!"
 

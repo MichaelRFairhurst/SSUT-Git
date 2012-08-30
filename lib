@@ -100,17 +100,20 @@ configure ()
   since=''
   remote=''
   git_dir=''
+  skip=false
   donedir=false
   doneremote=false
   donesince=false
   commands=( )
   for line in $@
   do
-    if [ $(echo $line | cut -b 1) != "#" ]
+    if [ -z "$line" ] || [ $(echo $line | cut -b 1) != "#" ]
     then
       varname=$(echo $line | cut -d = -f 1)
       varcont=$(echo $line | cut -d = -f 2-)
       case $varname in
+        skip)   skip=true
+                return ;;
 	since)  if $donesince
 	        then
 		  echo "Can only be one starting date"
