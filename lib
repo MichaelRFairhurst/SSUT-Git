@@ -206,12 +206,13 @@ run_repo ()
   if $checkrepo
   then
     $verbose && echo -e "\tUpdating refs"
-    git_do fetch $remote &> $OUTPUT
+    updated=$(git_do fetch $remote)
     if [ $? -ne 0 ]
     then
       echo "Could not access git repo!"
       exit 1
     fi
+    [ -z "$updated" ] && return
     populate_branches
     for branch in ${branches[@]}
     do

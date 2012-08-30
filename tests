@@ -747,6 +747,23 @@ testConfigureCommandsSetsCommands ()
   assertEquals "${commands[1]}" "testme2"
 }
 
+testRunRepoWithNoFetchReturns ()
+{
+  remote=origin
+  git_dir=`pwd`
+  run_repo
+  assertGitDid fetch origin
+}
+
+testRunRepoWithFetchUpdatesWillTest ()
+{
+  remote=origin
+  testing=false
+  git_dir=`pwd`
+  run_repo
+  assertGitDidMoreThan fetch origin
+}
+
 ###         ###
 #             #
 # Suite funcs #
@@ -766,14 +783,29 @@ assertGitDidNothing ()
 assertGitDid ()
 {
   assertTrue "Git log doesnt exist" " [ -e $TMP ] "
-  words=( $(cat $TMP) )
-  for word in ${words[@]}
+  git_args=( $(cat $TMP) )
+  for git_arg in ${git_args[@]}
   do
-    assertNotNull "Git command should be null but is $word" "$1"
-    assertEquals "Mismatched git params" "$1" "$word"
+    # If $git_arg[x] exists and $x is null, that means we got more args that we wanted
+    assertNotNull "Git command should be null but is $git_arg" "$1"
+    assertEquals "Mismatched git arguments" "$1" "$git_arg"
     shift
   done
   assertNull "Git command should be $@ but is null" "'"$@"'"
+}
+
+assertGitDidMoreThan ()
+{
+  assertTrue "Git log doesnt exist" " [ -e $TMP ] "
+  expected_args=( $@ )
+  performed_args=( $(cat $TMP) )
+  assertEquals "Git did not do more than specified" "${#expected_args[@]}" "${#performed_args[@]}"
+  index=0
+  for expected_arg in ${expected_args[@]}
+  do
+    assertEquals "Mismatched git params" "$expected_arg" "${performed_args[$index]}"
+    let index++
+  done
 }
 
 setUp ()
