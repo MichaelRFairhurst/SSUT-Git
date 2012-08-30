@@ -13,7 +13,7 @@ testCheckoutToTestCallsDoGitWithCheckoutWhenVerbose ()
    remote="test"
    branch="br"
    checkout_to_test > $TMP2
-   assertGitDid checkout test/br
+   assertGitDid checkout test/brfail
    assertNotNull "No output when verbose" "$(cat $TMP2)"
 }
 
