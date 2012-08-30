@@ -47,6 +47,19 @@ testUpdateBranchCallsDoGitWithRefUpdateWhenVerbose ()
   assertGitDid branch -f br test/br
 }
 
+testPopulateBranchesWithRemoteHEADIgnoresHeadBranchListing ()
+{
+  remote=origin
+  git_do ()
+  {
+    #git 1.7.1 will not do this, but it does by at least 1.7.4
+    echo -e "origin/HEAD -> origin/testbr\norigin/testbr"
+  }
+  populate_branches > $TMP2
+  assertEquals "${branches[0]}" testbr
+  assertEquals "${#branches[@]}" 1
+}
+
 testPopulateEmailsWithNoHistoryAssumesBranchIsNewAndGetsFullHistory()
 {
   remote=origin

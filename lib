@@ -51,7 +51,9 @@ populate_branches ()
 {
   $verbose && echo -e "\tGetting updated branches"
   branches=( )
-  allbranches=( $(git_do branch -r) )
+
+  #Newer versions of git will print an additional branch listing, origin/HEAD -> origin/master
+  allbranches=( $(git_do branch -r | grep "^[^{\-\>}]*$") )
   for br in ${allbranches[@]}
   do
     thisremote=$(echo $br | cut -d / -f 1)
