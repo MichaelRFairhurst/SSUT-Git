@@ -209,7 +209,7 @@ run_repo ()
   if $checkrepo
   then
     $verbose && echo -e "\tUpdating refs"
-    updated=$(git_do fetch $remote 1>&2)
+    updated=$(git_do fetch $remote 2>&1)
     if [ $? -ne 0 ]
     then
       echo "Could not access git repo!"
