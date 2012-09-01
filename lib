@@ -8,7 +8,9 @@ checkout_to_test ()
 {
   $verbose && echo -en "\t\tTesting $remote/$branch..."
   git_do checkout $remote/$branch &> $OUTPUT
+  q=$?
   $verbose && echo "done"
+  return $q
 }
 
 update_branch ()
@@ -16,7 +18,9 @@ update_branch ()
   $verbose && echo -en "\t\tUpdating $branch to $remote..."
   # avoid unnecessary checkouts
   git_do branch -f $branch $remote/$branch &> $OUTPUT
+  q=$?
   $verbose && echo "done"
+  return $q
 }
 
 populate_emails ()
@@ -44,7 +48,7 @@ populate_emails ()
       emails[${#emails[@]}]=$current
     fi
   done
-  $verbose && echo -e "\t\tdone"
+  $verbose && echo -e "\t\tdone"; :
 }
 
 populate_branches ()
@@ -91,7 +95,7 @@ populate_branches ()
       fi
     fi
   done
-  $verbose && echo -e "\tdone"
+  $verbose && echo -e "\tdone"; :
 }
 
 configure ()
@@ -159,10 +163,11 @@ configure ()
   if ! $donedir
   then
     echo "No git dir configured!"
+    exit 1
   fi
 
   $verbose && echo "okay"
-  $verbose && echo -e "\tdone"
+  $verbose && echo -e "\tdone"; :
 }
 
 do_email ()
@@ -172,8 +177,9 @@ do_email ()
   do
     $verbose && echo -e "\t\t\t\t$email"
     cat $RESULTTMP | eval $MAILCMD -s "'Failed tests on branch $branch'" "$email"
+    [ $? -ne 0 ] && return 1
   done
-  $verbose && echo -e "\t\t\tdone"
+  $verbose && echo -e "\t\t\tdone"; :
 }
 
 run_tests ()
@@ -195,7 +201,7 @@ run_tests ()
   done
   rm $RESULTTMP
   IFS=$oldIFS
-  $verbose && echo -e "\t\tdone"
+  $verbose && echo -e "\t\tdone"; :
 }
 
 run_repo ()
@@ -229,4 +235,5 @@ run_repo ()
     done
     $verbose && echo -e "\tAll new branches tested"
   fi
+  :
 }
